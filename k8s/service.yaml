@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: code-analyzer-service
+  labels:
+    app: code-analyzer
+spec:
+  type: LoadBalancer
+  selector:
+    app: code-analyzer
+    component: api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+      name: http

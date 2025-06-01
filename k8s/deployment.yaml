@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: code-analyzer-api
+  labels:
+    app: code-analyzer
+    component: api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: code-analyzer
+      component: api
+  template:
+    metadata:
+      labels:
+        app: code-analyzer
+        component: api
+    spec:
+      containers:
+      - name: api
+        image: your-registry/code-analyzer:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: code-analyzer-secrets
+              key: database-url
+        - name: AZURE_COGNITIVE_SERVICES_KEY
+          valueFrom:
+            secretKeyRef:
+              name: code-analyzer-secrets
+              key: azure-key
+        - name: APP_ENV
+          value: "production"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5

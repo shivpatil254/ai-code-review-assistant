@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Review Assistant - Enterprise Edition</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-light: #e94560;
+        }
+
+        body {
+            background: var(--dark-bg);
+            color: #f5f5f5;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+        }
+
+        .hero-section {
+            background: var(--primary-gradient);
+            padding: 3rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120"><path fill="%23ffffff10" d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"></path></svg>') repeat-x;
+            animation: wave 10s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-1200px); }
+        }
+
+        .main-card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tabs {
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .nav-tabs .nav-link {
+            color: #888;
+            border: none;
+            padding: 1rem 2rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #fff;
+            background: transparent;
+            border-bottom: 3px solid var(--text-light);
+        }
+
+        .code-editor {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 1rem;
+            font-family: 'Fira Code', monospace;
+            min-height: 400px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .code-editor textarea {
+            background: transparent;
+            border: none;
+            color: #e6e6e6;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+        }
+
+        .stats-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.3s;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stats-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .issue-item {
+            background: rgba(255,255,255,0.05);
+            border-left: 4px solid;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0 8px 8px 0;
+            transition: all 0.3s;
+        }
+
+        .issue-item:hover {
+            background: rgba(255,255,255,0.08);
+            transform: translateX(5px);
+        }
+
+        .issue-error { border-left-color: #e74c3c; }
+        .issue-warning { border-left-color: #f39c12; }
+        .issue-info { border-left-color: #3498db; }
+
+        .suggestion-card {
+            background: linear-gradient(135deg, rgba(46,213,115,0.1) 0%, rgba(46,213,115,0.05) 100%);
+            border: 1px solid rgba(46,213,115,0.3);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .suggestion-card:hover {
+            transform: translateX(5px);
+            border-color: rgba(46,213,115,0.5);
+        }
+
+        .analyze-btn {
+            background: var(--primary-gradient);
+            border: none;
+            padding: 1rem 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            transition: all 0.3s;
+            box-shadow: 0 10px 20px rgba(102,126,234,0.3);
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(102,126,234,0.4);
+        }
+
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .score-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .history-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .history-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .code-loader {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 1rem;
+            border: 3px solid rgba(255,255,255,0.1);
+            border-top-color: var(--text-light);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="code-loader"></div>
+            <h4 class="text-white">Analyzing your code...</h4>
+            <p class="text-muted">Using AI to provide intelligent suggestions</p>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-3">
+                <i class="fas fa-robot"></i> AI Code Review Assistant
+            </h1>
+            <p class="lead">Enterprise-grade code analysis with AI-powered insights</p>
+            <div class="mt-4">
+                <span class="badge bg-success me-2">Python 3.11+</span>
+                <span class="badge bg-primary me-2">Java/Spring Boot</span>
+                <span class="badge bg-warning me-2">Angular/TypeScript</span>
+                <span class="badge bg-info">Cloud-Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container py-5">
+        <div class="main-card">
+            <div class="card-body p-0">
+                <!-- Navigation Tabs -->
+                <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#analyze">
+                            <i class="fas fa-code"></i> Analyze Code
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#history">
+                            <i class="fas fa-history"></i> Review History
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#metrics">
+                            <i class="fas fa-chart-line"></i> Metrics
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content p-4">
+                    <!-- Analyze Tab -->
+                    <div class="tab-pane fade show active" id="analyze">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <h4 class="mb-4">
+                                    <i class="fas fa-edit"></i> Code Input
+                                </h4>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Language</label>
+                                    <select class="form-select" id="language">
+                                        <option value="python">Python</option>
+                                        <option value="java">Java</option>
+                                        <option value="javascript">JavaScript</option>
+                                        <option value="typescript">TypeScript</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label">Code Editor</label>
+                                    <div class="code-editor">
+                                        <textarea 
+                                            id="codeInput" 
+                                            class="w-100" 
+                                            rows="15"
+                                            placeholder="# Paste your code here...&#10;&#10;def analyze_data(data):&#10;    # Example function&#10;    result = eval(data)  # This will trigger a security warning&#10;    return result"
+                                        ></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary analyze-btn" onclick="analyzeCode()">
+                                        <i class="fas fa-microscope"></i> Analyze Code
+                                    </button>
+                                    <input type="file" id="fileInput" class="d-none" accept=".py,.java,.js,.ts">
+                                    <button class="btn btn-outline-secondary" onclick="document.getElementById('fileInput').click()">
+                                        <i class="fas fa-upload"></i> Upload File
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-lg-6">
+                                <h4 class="mb-4">
+                                    <i class="fas fa-chart-bar"></i> Analysis Results
+                                </h4>
+
+                                <div id="resultsSection" style="display: none;">
+                                    <!-- Score Display -->
+                                    <div class="text-center mb-4">
+                                        <div class="score-circle">
+                                            <svg width="150" height="150">
+                                                <circle cx="75" cy="75" r="70" fill="none" stroke="#333" stroke-width="10"/>
+                                                <circle id="scoreCircle" cx="75" cy="75" r="70" fill="none" stroke="url(#gradient)" 
+                                                        stroke-width="10" stroke-dasharray="440" stroke-dashoffset="440"
+                                                        transform="rotate(-90 75 75)"/>
+                                                <defs>
+                                                    <linearGradient id="gradient">
+                                                        <stop offset="0%" stop-color="#667eea"/>
+                                                        <stop offset="100%" stop-color="#764ba2"/>
+                                                    </linearGradient>
+                                                </defs>
+                                            </svg>
+                                            <div class="score-text" id="scoreText">0</div>
+                                        </div>
+                                        <p class="mt-2 text-muted">Code Quality Score</p>
+                                    </div>
+
+                                    <!-- Metrics Cards -->
+                                    <div class="row g-3 mb-4">
+                                        <div class="col-4">
+                                            <div class="stats-card">
+                                                <i class="fas fa-file-code fa-2x mb-2 text-primary"></i>
+                                                <h6>Lines of Code</h6>
+                                                <h4 id="locMetric">0</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="stats-card">
+                                                <i class="fas fa-project-diagram fa-2x mb-2 text-warning"></i>
+                                                <h6>Complexity</h6>
+                                                <h4 id="complexityMetric">0</h4>
+                                            </div>
+                                        </div>
+                                        <div class="col-4">
+                                            <div class="stats-card">
+                                                <i class="fas fa-tools fa-2x mb-2 text-success"></i>
+                                                <h6>Maintainability</h6>
+                                                <h4 id="maintainabilityMetric">0</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Issues Section -->
+                                    <div class="mb-4">
+                                        <h5 class="mb-3">
+                                            <i class="fas fa-exclamation-triangle"></i> Issues Found
+                                        </h5>
+                                        <div id="issuesList"></div>
+                                    </div>
+
+                                    <!-- AI Suggestions -->
+                                    <div>
+                                        <h5 class="mb-3">
+                                            <i class="fas fa-lightbulb"></i> AI Suggestions
+                                        </h5>
+                                        <div id="suggestionsList"></div>
+                                    </div>
+                                </div>
+
+                                <div id="emptyState" class="text-center py-5">
+                                    <i class="fas fa-code fa-4x text-muted mb-3"></i>
+                                    <p class="text-muted">Enter your code to see detailed analysis</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- History Tab -->
+                    <div class="tab-pane fade" id="history">
+                        <h4 class="mb-4">
+                            <i class="fas fa-clock"></i> Review History
+                        </h4>
+                        <div id="historyList">
+                            <p class="text-center text-muted py-5">No reviews yet. Start by analyzing some code!</p>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Tab -->
+                    <div class="tab-pane fade" id="metrics">
+                        <h4 class="mb-4">
+                            <i class="fas fa-analytics"></i> Code Quality Metrics
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="stats-card">
+                                    <i class="fas fa-check-circle fa-3x mb-3 text-success"></i>
+                                    <h5>Total Reviews</h5>
+                                    <h2 id="totalReviews">0</h2>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stats-card">
+                                    <i class="fas fa-star fa-3x mb-3 text-warning"></i>
+                                    <h5>Average Score</h5>
+                                    <h2 id="avgScore">0</h2>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="stats-card">
+                                    <i class="fas fa-code-branch fa-3x mb-3 text-info"></i>
+                                    <h5>Languages Analyzed</h5>
+                                    <h2 id="languageCount">0</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script>
+        // Global state
+        let reviewHistory = [];
+
+        // File upload handler
+        document.getElementById('fileInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('codeInput').value = e.target.result;
+                    
+                    // Auto-detect language
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    const langMap = {
+                        'py': 'python',
+                        'java': 'java',
+                        'js': 'javascript',
+                        'ts': 'typescript'
+                    };
+                    if (langMap[ext]) {
+                        document.getElementById('language').value = langMap[ext];
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        async function analyzeCode() {
+            const code = document.getElementById('codeInput').value;
+            const language = document.getElementById('language').value;
+
+            if (!code.trim()) {
+                alert('Please enter some code to analyze!');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        language: language,
+                        filename: `analysis_${Date.now()}.${language}`,
+                        enable_ai: true
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Analysis failed');
+                }
+
+                const result = await response.json();
+                displayResults(result);
+                
+                // Update history
+                await loadHistory();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: Make sure the backend is running on http://localhost:8000');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayResults(result) {
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+
+            // Animate score
+            const score = result.score;
+            const scoreCircle = document.getElementById('scoreCircle');
+            const scoreText = document.getElementById('scoreText');
+            
+            const circumference = 2 * Math.PI * 70;
+            const offset = circumference - (score / 100) * circumference;
+            
+            scoreCircle.style.transition = 'stroke-dashoffset 1s ease-in-out';
+            scoreCircle.style.strokeDashoffset = offset;
+            
+            // Animate score number
+            let currentScore = 0;
+            const increment = score / 50;
+            const timer = setInterval(() => {
+                currentScore += increment;
+                if (currentScore >= score) {
+                    currentScore = score;
+                    clearInterval(timer);
+                }
+                scoreText.textContent = Math.round(currentScore);
+            }, 20);
+
+            // Update metrics
+            document.getElementById('locMetric').textContent = result.metrics.lines_of_code;
+            document.getElementById('complexityMetric').textContent = result.metrics.cyclomatic_complexity.toFixed(1);
+            document.getElementById('maintainabilityMetric').textContent = result.metrics.maintainability_index.toFixed(1);
+
+            // Display issues
+            const issuesList = document.getElementById('issuesList');
+            if (result.issues.length === 0) {
+                issuesList.innerHTML = '<p class="text-success"><i class="fas fa-check-circle"></i> No issues found! Great job!</p>';
+            } else {
+                issuesList.innerHTML = result.issues.map(issue => `
+                    <div class="issue-item issue-${issue.severity}">
+                        <div class="d-flex justify-content-between">
+                            <span>
+                                <i class="fas fa-${getIssueIcon(issue.severity)}"></i>
+                                <strong>Line ${issue.line}:</strong> ${issue.message}
+                            </span>
+                            <span class="badge bg-${getSeverityColor(issue.severity)}">${issue.severity}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // Display AI suggestions
+            const suggestionsList = document.getElementById('suggestionsList');
+            suggestionsList.innerHTML = result.ai_suggestions.map(suggestion => `
+                <div class="suggestion-card">
+                    <i class="fas fa-magic me-2"></i> ${suggestion}
+                </div>
+            `).join('');
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/history');
+                const history = await response.json();
+                
+                const historyList = document.getElementById('historyList');
+                if (history.length === 0) {
+                    historyList.innerHTML = '<p class="text-center text-muted py-5">No reviews yet. Start by analyzing some code!</p>';
+                } else {
+                    historyList.innerHTML = history.map(item => `
+                        <div class="history-item">
+                            <div>
+                                <h6 class="mb-1">${item.filename}</h6>
+                                <small class="text-muted">
+                                    <i class="fas fa-code"></i> ${item.language} | 
+                                    <i class="fas fa-clock"></i> ${new Date(item.created_at).toLocaleString()}
+                                </small>
+                            </div>
+                            <div class="text-end">
+                                <h5 class="mb-0 text-${getScoreColor(item.score)}">${item.score.toFixed(1)}%</h5>
+                                <small>${item.issues_count} issues</small>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                // Update metrics
+                updateMetrics(history);
+                
+            } catch (error) {
+                console.error('Error loading history:', error);
+            }
+        }
+
+        function updateMetrics(history) {
+            document.getElementById('totalReviews').textContent = history.length;
+            
+            if (history.length > 0) {
+                const avgScore = history.reduce((sum, item) => sum + item.score, 0) / history.length;
+                document.getElementById('avgScore').textContent = avgScore.toFixed(1);
+                
+                const languages = new Set(history.map(item => item.language));
+                document.getElementById('languageCount').textContent = languages.size;
+            }
+        }
+
+        function getIssueIcon(severity) {
+            const icons = {
+                'error': 'exclamation-circle',
+                'warning': 'exclamation-triangle',
+                'info': 'info-circle'
+            };
+            return icons[severity] || 'info-circle';
+        }
+
+        function getSeverityColor(severity) {
+            const colors = {
+                'error': 'danger',
+                'warning': 'warning',
+                'info': 'info'
+            };
+            return colors[severity] || 'secondary';
+        }
+
+        function getScoreColor(score) {
+            if (score >= 80) return 'success';
+            if (score >= 60) return 'warning';
+            return 'danger';
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // Load history on page load
+        loadHistory();
+
+        // Tab change handler
+        document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(tab => {
+            tab.addEventListener('shown.bs.tab', (e) => {
+                if (e.target.getAttribute('href') === '#history') {
+                    loadHistory();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
