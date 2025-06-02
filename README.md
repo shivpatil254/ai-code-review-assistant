@@ -20,7 +20,6 @@ Comprehensive test coverage with pytest
 CI/CD pipeline with GitHub Actions
 Prometheus metrics integration
 Auto-scaling with Kubernetes HPA
-## 🏗️ Architecture
 
 ```mermaid
 graph TB
@@ -30,7 +29,7 @@ graph TB
     
     subgraph "API Gateway"
         B --> C[FastAPI Backend]
-        B --> D[Spring Boot Service(Optional)]
+        B --> D[Spring Boot Service - Optional]
     end
     
     subgraph "Core Services"
@@ -51,6 +50,8 @@ graph TB
         L[Prometheus Monitoring]
     end
 ```
+
+
 🚀 Quick Start
 Prerequisites
 Python 3.11+
